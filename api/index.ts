@@ -115,4 +115,7 @@ app.get("/cron/rotate", async (c) => {
   return c.json({ ok: true, round })
 })
 
+import { handle } from "hono/vercel"
+export const GET = handle(app)
+export const POST = handle(app)
 export default app
