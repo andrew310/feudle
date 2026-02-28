@@ -1,7 +1,7 @@
 import { Hono } from "hono"
 import OpenAI from "openai"
 import { getCurrentRound } from "./edge-config"
-import { getRoundForDate } from "./questions"
+import { getRound, questions } from "./questions"
 
 const app = new Hono().basePath("/api")
 
@@ -79,7 +79,9 @@ Respond ONLY with JSON: {"matchedIndex": <number|null>}`,
   return c.json({ matched: false })
 })
 
-app.get("/cron/rotate", async (c) => {
+// Set active question: GET /api/set?q=beta-3
+// Lists available questions: GET /api/set
+app.get("/set", async (c) => {
   const cronSecret = process.env.CRON_SECRET
   if (cronSecret) {
     const auth = c.req.header("Authorization")
@@ -88,8 +90,15 @@ app.get("/cron/rotate", async (c) => {
     }
   }
 
-  const today = new Date().toISOString().slice(0, 10)
-  const round = getRoundForDate(today)
+  const id = c.req.query("q")
+  if (!id) {
+    return c.json({ questions: questions.map((q) => ({ id: q.id, prompt: q.prompt })) })
+  }
+
+  const round = getRound(id)
+  if (!round) {
+    return c.json({ error: `Unknown question: ${id}`, available: questions.map((q) => q.id) }, 404)
+  }
 
   const edgeConfigId = process.env.EDGE_CONFIG_ID
   const vercelToken = process.env.VERCEL_API_TOKEN
@@ -112,7 +121,7 @@ app.get("/cron/rotate", async (c) => {
     }
   }
 
-  return c.json({ ok: true, round })
+  return c.json({ ok: true, round: { id: round.id, prompt: round.prompt } })
 })
 
 import { handle } from "hono/vercel"

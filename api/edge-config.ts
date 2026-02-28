@@ -1,9 +1,5 @@
 import type { Round } from "./types"
-import { getRoundForDate } from "./questions"
-
-function today(): string {
-  return new Date().toISOString().slice(0, 10)
-}
+import { questions } from "./questions"
 
 export async function getCurrentRound(): Promise<Round> {
   if (process.env.EDGE_CONFIG) {
@@ -12,8 +8,9 @@ export async function getCurrentRound(): Promise<Round> {
       const round = await get<Round>("current_round")
       if (round) return round
     } catch {
-      // Edge Config read failed, fall through to question bank
+      // Edge Config read failed, fall through to default
     }
   }
-  return getRoundForDate(today())
+  // Local dev or no Edge Config: serve first question
+  return questions[0]
 }

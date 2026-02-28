@@ -1,7 +1,8 @@
 import type { Round } from "./types"
 
-const questions: Omit<Round, "id">[] = [
+const questions: Round[] = [
   {
+    id: "beta-1",
     prompt: "Name something you'd bring to the beach",
     answers: [
       { text: "Towel", points: 32 },
@@ -15,6 +16,7 @@ const questions: Omit<Round, "id">[] = [
     ],
   },
   {
+    id: "beta-2",
     prompt: "Name something people forget to pack on vacation",
     answers: [
       { text: "Toothbrush", points: 30 },
@@ -28,6 +30,7 @@ const questions: Omit<Round, "id">[] = [
     ],
   },
   {
+    id: "beta-3",
     prompt: "Name a reason someone might be late to work",
     answers: [
       { text: "Traffic", points: 35 },
@@ -41,6 +44,7 @@ const questions: Omit<Round, "id">[] = [
     ],
   },
   {
+    id: "beta-4",
     prompt: "Name something you'd find in a doctor's office",
     answers: [
       { text: "Stethoscope", points: 30 },
@@ -54,6 +58,7 @@ const questions: Omit<Round, "id">[] = [
     ],
   },
   {
+    id: "beta-5",
     prompt: "Name something people do on a first date",
     answers: [
       { text: "Dinner", points: 35 },
@@ -67,6 +72,7 @@ const questions: Omit<Round, "id">[] = [
     ],
   },
   {
+    id: "beta-6",
     prompt: "Name a popular pizza topping",
     answers: [
       { text: "Pepperoni", points: 38 },
@@ -80,6 +86,7 @@ const questions: Omit<Round, "id">[] = [
     ],
   },
   {
+    id: "beta-7",
     prompt: "Name something you'd find in a kitchen junk drawer",
     answers: [
       { text: "Batteries", points: 28 },
@@ -93,6 +100,7 @@ const questions: Omit<Round, "id">[] = [
     ],
   },
   {
+    id: "beta-8",
     prompt: "Name an animal you might see at the zoo",
     answers: [
       { text: "Lion", points: 30 },
@@ -106,6 +114,7 @@ const questions: Omit<Round, "id">[] = [
     ],
   },
   {
+    id: "beta-9",
     prompt: "Name something that makes you sneeze",
     answers: [
       { text: "Dust", points: 30 },
@@ -119,6 +128,7 @@ const questions: Omit<Round, "id">[] = [
     ],
   },
   {
+    id: "beta-10",
     prompt: "Name something you'd grab during a fire drill",
     answers: [
       { text: "Phone", points: 35 },
@@ -132,6 +142,7 @@ const questions: Omit<Round, "id">[] = [
     ],
   },
   {
+    id: "beta-11",
     prompt: "Name something people collect",
     answers: [
       { text: "Stamps", points: 28 },
@@ -145,6 +156,7 @@ const questions: Omit<Round, "id">[] = [
     ],
   },
   {
+    id: "beta-12",
     prompt: "Name something that runs on batteries",
     answers: [
       { text: "Remote control", points: 32 },
@@ -159,13 +171,12 @@ const questions: Omit<Round, "id">[] = [
   },
 ]
 
-const EPOCH = new Date("2026-01-01T00:00:00Z").getTime()
-const DAY_MS = 86_400_000
+export function getRound(id: string): Round | undefined {
+  return questions.find((q) => q.id === id)
+}
 
-export function getRoundForDate(dateStr: string): Round {
-  const day = Math.floor((new Date(dateStr + "T00:00:00Z").getTime() - EPOCH) / DAY_MS)
-  const index = ((day % questions.length) + questions.length) % questions.length
-  return { id: dateStr, ...questions[index] }
+export function getRoundByIndex(index: number): Round {
+  return questions[((index % questions.length) + questions.length) % questions.length]
 }
 
 export { questions }
