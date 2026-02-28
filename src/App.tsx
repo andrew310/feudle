@@ -23,6 +23,8 @@ function App() {
   const [currentGuess, setCurrentGuess] = useState("")
   const [gameStatus, setGameStatus] = useState<"loading" | "playing" | "won" | "lost">("loading")
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [copied, setCopied] = useState(false)
+  const [showStats, setShowStats] = useState(false)
   const { stats, recordGame } = useStats()
   const recordedRef = useRef(false)
 
@@ -53,9 +55,10 @@ function App() {
     saveGameState(round.id, revealed, strikes, gameStatus as "playing" | "won" | "lost")
   }, [round, revealed, strikes, gameStatus])
 
-  // Record stats when game ends
+  // Record stats and show modal when game ends
   useEffect(() => {
     if (!round || (gameStatus !== "won" && gameStatus !== "lost")) return
+    setShowStats(true)
     if (recordedRef.current) return
     recordedRef.current = true
     const score = [...revealed.values()].reduce((sum, a) => sum + a.points, 0)
@@ -109,11 +112,10 @@ function App() {
   }
 
   const isOver = gameStatus === "won" || gameStatus === "lost"
-  const [copied, setCopied] = useState(false)
 
   function shareResult() {
     if (!round) return
-    const squares = round.answers.map((_, i) => revealed.has(i) ? "\u{1F7E9}" : "\u2B1B")
+    const squares = round.answers.map((_, i) => revealed.has(i) ? "\u{1F7E6}" : "\u2B1B")
     const rows = Array.from({ length: 4 }, (_, r) => squares[r] + squares[r + 4])
     const board = rows.join("\n")
     const score = [...revealed.values()].reduce((sum, a) => sum + a.points, 0)
@@ -161,21 +163,27 @@ function App() {
           </span>
         ))}
       </div>
+      <StatsModal
+        open={showStats}
+        onClose={() => setShowStats(false)}
+        gamesPlayed={stats.gamesPlayed}
+        wins={stats.wins}
+        currentStreak={stats.currentStreak}
+        maxStreak={stats.maxStreak}
+        score={score}
+        total={total}
+        onShare={shareResult}
+        copied={copied}
+      />
       {isOver ? (
-        <div className="game-message">
-          {gameStatus === "won" ? "You got them all!" : "Game over!"}
-          <StatsModal
-            gamesPlayed={stats.gamesPlayed}
-            wins={stats.wins}
-            currentStreak={stats.currentStreak}
-            maxStreak={stats.maxStreak}
-            score={score}
-            total={total}
-          />
-          <button className="share-btn" onClick={shareResult}>
-            {copied ? "Copied!" : "Share"}
-          </button>
-        </div>
+        !showStats && (
+          <div className="game-message">
+            {gameStatus === "won" ? "You got them all!" : "Game over!"}
+            <button className="share-btn" onClick={() => setShowStats(true)}>
+              Stats
+            </button>
+          </div>
+        )
       ) : (
         <form
           className="guess-form"
