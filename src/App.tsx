@@ -25,8 +25,20 @@ function App() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [copied, setCopied] = useState(false)
   const [showStats, setShowStats] = useState(false)
+  const [theme, setTheme] = useState<"dark" | "light">(() => {
+    return (localStorage.getItem("feudle-theme") as "dark" | "light") || "dark"
+  })
   const { stats, recordGame } = useStats()
   const recordedRef = useRef(false)
+
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme)
+    localStorage.setItem("feudle-theme", theme)
+  }, [theme])
+
+  function toggleTheme() {
+    setTheme((t) => t === "dark" ? "light" : "dark")
+  }
 
   useEffect(() => {
     fetch("/api/round")
@@ -105,6 +117,9 @@ function App() {
       <div className="app">
         <nav className="nav">
           <h1>Feudle</h1>
+          <button className="theme-toggle" onClick={toggleTheme}>
+            {theme === "dark" ? "Light" : "Dark"}
+          </button>
         </nav>
         <div className="clue">Loading...</div>
       </div>
@@ -134,6 +149,9 @@ function App() {
     <div className="app">
       <nav className="nav">
         <h1>Feudle</h1>
+        <button className="theme-toggle" onClick={toggleTheme}>
+          {theme === "dark" ? "Light" : "Dark"}
+        </button>
       </nav>
       <div className="clue">{round.prompt}</div>
       <main className="board">
