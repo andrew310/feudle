@@ -301,25 +301,31 @@ app.get("/set", async (c) => {
   const edgeConfigId = process.env.EDGE_CONFIG_ID
   const vercelToken = process.env.VERCEL_API_TOKEN
 
-  if (edgeConfigId && vercelToken) {
-    const res = await fetch(`https://api.vercel.com/v1/edge-config/${edgeConfigId}/items`, {
-      method: "PATCH",
-      headers: {
-        Authorization: `Bearer ${vercelToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        items: [{ operation: "upsert", key: "current_round", value: round }],
-      }),
-    })
-
-    if (!res.ok) {
-      const body = await res.text()
-      return c.json({ error: "Edge Config write failed", detail: body }, 500)
-    }
+  if (!edgeConfigId || !vercelToken) {
+    return c.json({
+      error: "Missing env vars",
+      EDGE_CONFIG_ID: edgeConfigId ? "set" : "MISSING",
+      VERCEL_API_TOKEN: vercelToken ? "set" : "MISSING",
+    }, 500)
   }
 
-  return c.json({ ok: true, round: { id: round.id, prompt: round.prompt } })
+  const res = await fetch(`https://api.vercel.com/v1/edge-config/${edgeConfigId}/items`, {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${vercelToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      items: [{ operation: "upsert", key: "current_round", value: round }],
+    }),
+  })
+
+  if (!res.ok) {
+    const body = await res.text()
+    return c.json({ error: "Edge Config write failed", detail: body }, 500)
+  }
+
+  return c.json({ ok: true, written: true, round: { id: round.id, prompt: round.prompt } })
 })
 
 export const GET = handle(app)
