@@ -216,7 +216,7 @@ function App() {
             value={currentGuess}
             onChange={(e) => setCurrentGuess(e.target.value)}
             placeholder="Type your answer..."
-            autoFocus
+
             disabled={isSubmitting}
           />
           <button className="guess-btn" type="submit" disabled={isSubmitting}>
