@@ -1,6 +1,7 @@
 import { Hono } from "hono"
 import { handle } from "hono/vercel"
 import OpenAI from "openai"
+import { createClient } from "redis"
 
 // --- Types ---
 
@@ -184,17 +185,25 @@ function getRound(id: string): Round | undefined {
   return questions.find((q) => q.id === id)
 }
 
-// --- Edge Config ---
+// --- Redis ---
+
+async function getRedis() {
+  const client = createClient({ url: process.env.REDIS_URL })
+  await client.connect()
+  return client
+}
 
 async function getCurrentRound(): Promise<Round> {
-  if (process.env.EDGE_CONFIG) {
-    try {
-      const { get } = await import("@vercel/edge-config")
-      const round = await get<Round>("current_round")
+  try {
+    const redis = await getRedis()
+    const id = await redis.get("current_round")
+    await redis.quit()
+    if (id) {
+      const round = getRound(id)
       if (round) return round
-    } catch {
-      // Edge Config read failed, fall through to default
     }
+  } catch {
+    // Redis unavailable, fall through to default
   }
   return questions[0]
 }
@@ -277,8 +286,9 @@ Respond ONLY with JSON: {"matchedIndex": <number|null>}`,
   return c.json({ matched: false })
 })
 
-// Set active question: GET /api/set?q=beta-3
-// Lists available questions: GET /api/set
+// GET /api/set — pick next unused question and set it as current
+// GET /api/set?q=beta-5 — force a specific question
+// GET /api/set?status — show current round and used list
 app.get("/set", async (c) => {
   const cronSecret = process.env.CRON_SECRET
   if (cronSecret) {
@@ -288,44 +298,46 @@ app.get("/set", async (c) => {
     }
   }
 
-  const id = c.req.query("q")
-  if (!id) {
-    return c.json({ questions: questions.map((q) => ({ id: q.id, prompt: q.prompt })) })
-  }
+  const redis = await getRedis()
 
-  const round = getRound(id)
-  if (!round) {
-    return c.json({ error: `Unknown question: ${id}`, available: questions.map((q) => q.id) }, 404)
-  }
-
-  const edgeConfigId = process.env.EDGE_CONFIG_ID
-  const vercelToken = process.env.VERCEL_API_TOKEN
-
-  if (!edgeConfigId || !vercelToken) {
+  // Status check
+  if (c.req.query("status") !== undefined) {
+    const currentId = await redis.get("current_round")
+    const used = await redis.sMembers("used_rounds")
+    await redis.quit()
+    const available = questions.filter((q) => !used.includes(q.id))
     return c.json({
-      error: "Missing env vars",
-      EDGE_CONFIG_ID: edgeConfigId ? "set" : "MISSING",
-      VERCEL_API_TOKEN: vercelToken ? "set" : "MISSING",
-    }, 500)
+      current: currentId,
+      used,
+      available: available.map((q) => ({ id: q.id, prompt: q.prompt })),
+    })
   }
 
-  const res = await fetch(`https://api.vercel.com/v1/edge-config/${edgeConfigId}/items`, {
-    method: "PATCH",
-    headers: {
-      Authorization: `Bearer ${vercelToken}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      items: [{ operation: "upsert", key: "current_round", value: round }],
-    }),
-  })
+  const forcedId = c.req.query("q")
+  let round: Round | undefined
 
-  if (!res.ok) {
-    const body = await res.text()
-    return c.json({ error: "Edge Config write failed", detail: body }, 500)
+  if (forcedId) {
+    round = getRound(forcedId)
+    if (!round) {
+      await redis.quit()
+      return c.json({ error: `Unknown question: ${forcedId}`, available: questions.map((q) => q.id) }, 404)
+    }
+  } else {
+    // Pick next unused question
+    const used = await redis.sMembers("used_rounds")
+    const available = questions.filter((q) => !used.includes(q.id))
+    if (available.length === 0) {
+      await redis.quit()
+      return c.json({ error: "All questions used! Add more to the bank.", used })
+    }
+    round = available[0]
   }
 
-  return c.json({ ok: true, written: true, round: { id: round.id, prompt: round.prompt } })
+  await redis.set("current_round", round.id)
+  await redis.sAdd("used_rounds", round.id)
+  await redis.quit()
+
+  return c.json({ ok: true, round: { id: round.id, prompt: round.prompt } })
 })
 
 export const GET = handle(app)
