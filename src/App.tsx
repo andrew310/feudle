@@ -120,7 +120,7 @@ function App() {
     const board = rows.join("\n")
     const score = [...revealed.values()].reduce((sum, a) => sum + a.points, 0)
     const total = round.answers.reduce((sum, a) => sum + a.points, 0)
-    const text = `Feudle ${score}/${total}\n${board}`
+    const text = `Feudle ${score}/${total}\n${board}\n\nPlay now: https://feudle-psi.vercel.app`
     navigator.clipboard.writeText(text).then(() => {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
